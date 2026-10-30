@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useEffectEvent } from 'react';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Switch } from '../../components/common/Switch';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
 import { authApi } from '../../api/authApi';
 import { extractErrorMessage } from '../../api/client';
 import { UserDetailsResponse } from '../../types';
@@ -22,7 +22,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useLocale } from '../../context/LocaleContext';
+import { useLocale } from '../../hooks/useLocale';
 
 export const ProfilePage: React.FC = () => {
   const { user: contextUser, refreshProfile } = useAuth();
@@ -54,7 +54,7 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const fetchProfileFromServer = useCallback(async (isManualRefresh = false) => {
+  const fetchProfileFromServer = async (isManualRefresh = false) => {
     if (isManualRefresh) {
       setIsRefreshing(true);
     } else {
@@ -96,11 +96,13 @@ export const ProfilePage: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [refreshProfile, success, error]);
+  };
+
+  const fetchProfileFromEffect = useEffectEvent(fetchProfileFromServer);
 
   useEffect(() => {
-    fetchProfileFromServer();
-  }, [fetchProfileFromServer]);
+    fetchProfileFromEffect();
+  }, []);
 
   const activeUser = profileData || contextUser;
 

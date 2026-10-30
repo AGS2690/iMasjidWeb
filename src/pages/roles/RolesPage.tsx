@@ -7,19 +7,19 @@ import { DataTable, ColumnDef } from '../../components/common/DataTable';
 import { ActionGuard } from '../../components/common/ActionGuard';
 import { RoleResponse } from '../../types';
 import { rolesApi } from '../../api/rolesApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 import { useModalState } from '../../hooks/useModalState';
 import { Plus, Edit2, Trash2, KeyRound, LayoutGrid, LayoutList, Shield } from 'lucide-react';
 import { RoleModal } from './RoleModal';
 import { PermissionMatrixModal } from './PermissionMatrixModal';
 import { RoleMenuMatrixModal } from './RoleMenuMatrixModal';
-import { useLocale } from '../../context/LocaleContext';
+import { useLocale } from '../../hooks/useLocale';
 
 export const RolesPage: React.FC = () => {
   const { t } = useLocale();
   const [roles, setRoles] = useState<RoleResponse[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -45,8 +45,24 @@ export const RolesPage: React.FC = () => {
   }, [error]);
 
   useEffect(() => {
-    loadRoles();
-  }, [loadRoles]);
+    let active = true;
+    rolesApi.getRoles()
+      .then((res) => {
+        if (active && (res.success ?? res.isSuccess) && res.data) {
+          setRoles(res.data);
+        }
+      })
+      .catch((err) => {
+        if (active) error(extractErrorMessage(err), 'Failed to load roles');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [error]);
 
   const handleDelete = async () => {
     if (!modal.selectedForDelete) return;

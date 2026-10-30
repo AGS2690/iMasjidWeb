@@ -4,7 +4,7 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { RoleResponse, RoleMenuDetailsResponse } from '../../types';
 import { rolesApi } from '../../api/rolesApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 import { Layers, ShieldCheck } from 'lucide-react';
 

@@ -9,21 +9,23 @@ import { ActionGuard } from '../../components/common/ActionGuard';
 import { UserResponse, RoleResponse } from '../../types';
 import { usersApi } from '../../api/usersApi';
 import { rolesApi } from '../../api/rolesApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 import { useModalState } from '../../hooks/useModalState';
+import { useDebounce } from '../../hooks/useDebounce';
 import { UserPlus, Shield, Eye, Edit2, Trash2 } from 'lucide-react';
 import { UserModal } from './UserModal';
 import { AssignRolesModal } from './AssignRolesModal';
 import { UserDetailsModal } from './UserDetailsModal';
-import { useLocale } from '../../context/LocaleContext';
+import { useLocale } from '../../hooks/useLocale';
 
 export const UsersPage: React.FC = () => {
   const { t } = useLocale();
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [roles, setRoles] = useState<RoleResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 350);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
@@ -38,7 +40,7 @@ export const UsersPage: React.FC = () => {
       const res = await usersApi.getUsers({
         pageNumber,
         pageSize,
-        searchTerm: searchTerm.trim() || undefined,
+        searchTerm: debouncedSearchTerm.trim() || undefined,
       });
       const isOk = res.success ?? res.isSuccess;
       if (isOk && res.data) {
@@ -51,27 +53,65 @@ export const UsersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [pageNumber, pageSize, searchTerm, error]);
+  }, [pageNumber, pageSize, debouncedSearchTerm, error]);
 
-  const loadRoles = async () => {
-    try {
-      const res = await rolesApi.getRoles();
-      const isOk = res.success ?? res.isSuccess;
-      if (isOk && res.data) {
-        setRoles(res.data);
-      }
-    } catch {
-      // ignore
-    }
+  useEffect(() => {
+    if (searchTerm !== debouncedSearchTerm) return;
+
+    let active = true;
+    usersApi.getUsers({
+      pageNumber,
+      pageSize,
+      searchTerm: debouncedSearchTerm.trim() || undefined,
+    })
+      .then((res) => {
+        if (!active) return;
+        const isOk = res.success ?? res.isSuccess;
+        if (isOk && res.data) {
+          setUsers(res.data.items || []);
+          setTotalCount(res.data.totalCount || 0);
+          setTotalPages(res.data.totalPages || 1);
+        }
+      })
+      .catch((err) => {
+        if (active) error(extractErrorMessage(err), 'Failed to load users');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [pageNumber, pageSize, searchTerm, debouncedSearchTerm, error]);
+
+  const handleSearchChange = (value: string) => {
+    setIsLoading(true);
+    setPageNumber(1);
+    setSearchTerm(value);
+  };
+
+  const handlePageChange = (page: number) => {
+    setIsLoading(true);
+    setPageNumber(page);
   };
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    let active = true;
+    rolesApi.getRoles()
+      .then((res) => {
+        if (active && (res.success ?? res.isSuccess) && res.data) {
+          setRoles(res.data);
+        }
+      })
+      .catch((err) => {
+        if (active) error(extractErrorMessage(err), 'Failed to load roles');
+      });
 
-  useEffect(() => {
-    loadRoles();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [error]);
 
   const handleToggleStatus = async (user: UserResponse) => {
     try {
@@ -226,10 +266,7 @@ export const UsersPage: React.FC = () => {
         data={users}
         isLoading={isLoading}
         searchTerm={searchTerm}
-        onSearchChange={(term) => {
-          setSearchTerm(term);
-          setPageNumber(1);
-        }}
+        onSearchChange={handleSearchChange}
         searchPlaceholder={t('Users.searchPlaceholder', 'Search by name, username, or email...')}
         exportFilename="users_directory"
         pagination={{
@@ -237,7 +274,7 @@ export const UsersPage: React.FC = () => {
           pageSize,
           totalCount,
           totalPages,
-          onPageChange: setPageNumber,
+          onPageChange: handlePageChange,
         }}
         emptyTitle={t('Users.noUsersFound', 'No Users Found')}
         emptyMessage={t('Users.noUsersMatching', 'No registered users match your current search parameters.')}

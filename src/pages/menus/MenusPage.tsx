@@ -8,19 +8,19 @@ import { ActionGuard } from '../../components/common/ActionGuard';
 import { MenuResponse, BusinessActionResponse } from '../../types';
 import { menusApi } from '../../api/menusApi';
 import { actionsApi } from '../../api/actionsApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 import { useModalState } from '../../hooks/useModalState';
 import { Plus, Edit2, Trash2, Sliders, Layers } from 'lucide-react';
 import { MenuModal } from './MenuModal';
 import { AssignActionsModal } from './AssignActionsModal';
 
-import { useLocale } from '../../context/LocaleContext';
+import { useLocale } from '../../hooks/useLocale';
 
 export const MenusPage: React.FC = () => {
   const [menus, setMenus] = useState<MenuResponse[]>([]);
   const [actions, setActions] = useState<BusinessActionResponse[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const { currentLocale, t } = useLocale();
@@ -46,8 +46,28 @@ export const MenusPage: React.FC = () => {
   }, [error]);
 
   useEffect(() => {
-    loadMenus();
-  }, [loadMenus, currentLocale?.cultureCode]);
+    let active = true;
+    Promise.all([menusApi.getAllMenus(), actionsApi.getActions()])
+      .then(([menusResponse, actionsResponse]) => {
+        if (!active) return;
+        if ((menusResponse.success ?? menusResponse.isSuccess) && menusResponse.data) {
+          setMenus(menusResponse.data);
+        }
+        if ((actionsResponse.success ?? actionsResponse.isSuccess) && actionsResponse.data) {
+          setActions(actionsResponse.data);
+        }
+      })
+      .catch((err) => {
+        if (active) error(extractErrorMessage(err), 'Failed to load menus');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentLocale?.cultureCode, error]);
 
   const handleDelete = async () => {
     if (!modal.selectedForDelete) return;

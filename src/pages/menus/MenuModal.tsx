@@ -5,7 +5,7 @@ import { Input } from '../../components/common/Input';
 import { Switch } from '../../components/common/Switch';
 import { MenuResponse } from '../../types';
 import { menusApi } from '../../api/menusApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 
 interface MenuModalProps {

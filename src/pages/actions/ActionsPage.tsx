@@ -7,17 +7,17 @@ import { DataTable, ColumnDef } from '../../components/common/DataTable';
 import { ActionGuard } from '../../components/common/ActionGuard';
 import { BusinessActionResponse } from '../../types';
 import { actionsApi } from '../../api/actionsApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 import { useModalState } from '../../hooks/useModalState';
 import { Plus, Edit2, Trash2, Sliders } from 'lucide-react';
 import { ActionModal } from './ActionModal';
 
-import { useLocale } from '../../context/LocaleContext';
+import { useLocale } from '../../hooks/useLocale';
 
 export const ActionsPage: React.FC = () => {
   const [actions, setActions] = useState<BusinessActionResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const { currentLocale, t } = useLocale();
@@ -40,8 +40,24 @@ export const ActionsPage: React.FC = () => {
   }, [error]);
 
   useEffect(() => {
-    loadActions();
-  }, [loadActions, currentLocale?.cultureCode]);
+    let active = true;
+    actionsApi.getActions()
+      .then((res) => {
+        if (active && (res.success ?? res.isSuccess) && res.data) {
+          setActions(res.data);
+        }
+      })
+      .catch((err) => {
+        if (active) error(extractErrorMessage(err), 'Failed to load business actions');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentLocale?.cultureCode, error]);
 
   const handleDelete = async () => {
     if (!modal.selectedForDelete) return;

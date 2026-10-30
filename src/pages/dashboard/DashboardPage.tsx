@@ -1,6 +1,6 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useLocale } from '../../context/LocaleContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useLocale } from '../../hooks/useLocale';
 import { PageHeader } from '../../components/common/PageHeader';
 
 export const DashboardPage: React.FC = () => {

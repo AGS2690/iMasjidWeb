@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { authApi } from '../../api/authApi';
 import { extractErrorMessage } from '../../api/client';
 import { KeyRound, ShieldCheck, Lock, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';

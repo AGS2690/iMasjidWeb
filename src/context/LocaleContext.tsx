@@ -1,21 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { useState, useEffect, ReactNode, useCallback } from 'react';
 import { SupportedLocale } from '../types';
 import { localesApi } from '../api/localesApi';
-import { translate, resolveLanguageCode, SupportedLanguageCode } from '../utils/i18n';
-
-interface LocaleContextType {
-  locales: SupportedLocale[];
-  currentLocale: SupportedLocale | null;
-  setLocale: (locale: SupportedLocale) => void;
-  isLoading: boolean;
-  refreshLocales: () => Promise<void>;
-  t: (key: string, fallback?: string) => string;
-  language: SupportedLanguageCode;
-}
+import { translate, resolveLanguageCode } from '../utils/i18n';
+import { LocaleContext } from './localeContextStore';
 
 const STORAGE_KEY = 'imasjid_selected_locale';
-
-const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
 const applyDocumentAttributes = (locale: SupportedLocale | null) => {
   if (!locale) return;
@@ -147,18 +136,4 @@ export const LocaleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       {children}
     </LocaleContext.Provider>
   );
-};
-
-export const useLocale = (): LocaleContextType => {
-  const context = useContext(LocaleContext);
-  if (!context) {
-    throw new Error('useLocale must be used within a LocaleProvider');
-  }
-  return context;
-};
-
-// Convenience hook for components focusing solely on translation
-export const useTranslation = () => {
-  const { t, currentLocale, setLocale, locales, language } = useLocale();
-  return { t, currentLocale, setLocale, locales, language };
 };

@@ -91,7 +91,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      if (originalRequest.url?.includes('/api/auth/login') || originalRequest.url?.includes('/api/auth/refresh')) {
+      if (originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/refresh')) {
         return Promise.reject(error);
       }
 
@@ -123,7 +123,7 @@ apiClient.interceptors.response.use(
 
       try {
         const response = await axios.post<ApiResponse<TokenDto>>(
-          `${API_BASE_URL}/api/auth/refresh`,
+          `${API_BASE_URL.replace(/\/+$/, '')}/auth/refresh`,
           { accessToken, refreshToken }
         );
 

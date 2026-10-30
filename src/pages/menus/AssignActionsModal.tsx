@@ -3,7 +3,7 @@ import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
 import { MenuResponse, BusinessActionResponse } from '../../types';
 import { menusApi } from '../../api/menusApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 
 interface AssignActionsModalProps {

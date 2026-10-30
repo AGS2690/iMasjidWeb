@@ -3,7 +3,7 @@ import { ApiResponse, UserNavMenuResponse, MenuTreeNodeResponse, MenuResponse } 
 
 export const menusApi = {
   getUserNavMenu: async (culture?: string) => {
-    const res = await apiClient.get<ApiResponse<UserNavMenuResponse[]>>('/api/menus/nav', {
+    const res = await apiClient.get<ApiResponse<UserNavMenuResponse[]>>('/menus/nav', {
       params: culture ? { culture } : {},
     });
     return res.data;
@@ -13,7 +13,7 @@ export const menusApi = {
     const params: Record<string, any> = {};
     if (isActive !== undefined) params.isActive = isActive;
     if (culture) params.culture = culture;
-    const res = await apiClient.get<ApiResponse<MenuTreeNodeResponse[]>>('/api/menus/tree', { params });
+    const res = await apiClient.get<ApiResponse<MenuTreeNodeResponse[]>>('/menus/tree', { params });
     return res.data;
   },
 
@@ -21,32 +21,32 @@ export const menusApi = {
     const params: Record<string, any> = {};
     if (isActive !== undefined) params.isActive = isActive;
     if (culture) params.culture = culture;
-    const res = await apiClient.get<ApiResponse<MenuResponse[]>>('/api/menus', { params });
+    const res = await apiClient.get<ApiResponse<MenuResponse[]>>('/menus', { params });
     return res.data;
   },
 
   getMenuById: async (id: string) => {
-    const res = await apiClient.get<ApiResponse<MenuResponse>>(`/api/menus/${id}`);
+    const res = await apiClient.get<ApiResponse<MenuResponse>>(`/menus/${id}`);
     return res.data;
   },
 
   createMenu: async (payload: { title: string; route?: string; icon?: string; parentId?: string; orderIndex?: number; isActive?: boolean; actionIds?: string[] }) => {
-    const res = await apiClient.post<ApiResponse<MenuResponse>>('/api/menus', payload);
+    const res = await apiClient.post<ApiResponse<MenuResponse>>('/menus', payload);
     return res.data;
   },
 
   updateMenu: async (id: string, payload: { title: string; route?: string; icon?: string; parentId?: string; orderIndex?: number; isActive?: boolean }) => {
-    const res = await apiClient.put<ApiResponse<MenuResponse>>(`/api/menus/${id}`, payload);
+    const res = await apiClient.put<ApiResponse<MenuResponse>>(`/menus/${id}`, payload);
     return res.data;
   },
 
   deleteMenu: async (id: string) => {
-    const res = await apiClient.delete<ApiResponse>(`/api/menus/${id}`);
+    const res = await apiClient.delete<ApiResponse>(`/menus/${id}`);
     return res.data;
   },
 
   assignActions: async (id: string, actionIds: string[]) => {
-    const res = await apiClient.post<ApiResponse>(`/api/menus/${id}/actions`, { actionIds });
+    const res = await apiClient.post<ApiResponse>(`/menus/${id}/actions`, { actionIds });
     return res.data;
   },
 };

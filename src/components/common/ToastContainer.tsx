@@ -1,5 +1,6 @@
 import React from 'react';
-import { useToast, ToastType } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
+import { ToastType } from '../../context/toastContextStore';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const icons: Record<ToastType, React.ReactNode> = {

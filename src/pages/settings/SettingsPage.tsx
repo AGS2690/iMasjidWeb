@@ -6,17 +6,17 @@ import { DataTable, ColumnDef } from '../../components/common/DataTable';
 import { ActionGuard } from '../../components/common/ActionGuard';
 import { SettingResponse } from '../../types';
 import { settingsApi } from '../../api/settingsApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 import { useModalState } from '../../hooks/useModalState';
 import { Plus, Edit2, Sliders, Lock } from 'lucide-react';
 import { SettingModal } from './SettingModal';
-import { useLocale } from '../../context/LocaleContext';
+import { useLocale } from '../../hooks/useLocale';
 
 export const SettingsPage: React.FC = () => {
   const { t } = useLocale();
   const [settings, setSettings] = useState<SettingResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const modal = useModalState<SettingResponse>();
@@ -38,8 +38,24 @@ export const SettingsPage: React.FC = () => {
   }, [error]);
 
   useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+    let active = true;
+    settingsApi.getSettings()
+      .then((res) => {
+        if (active && (res.success ?? res.isSuccess) && res.data) {
+          setSettings(res.data);
+        }
+      })
+      .catch((err) => {
+        if (active) error(extractErrorMessage(err), 'Failed to load settings');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [error]);
 
   const filteredSettings = settings.filter((s) => {
     const term = searchTerm.toLowerCase();

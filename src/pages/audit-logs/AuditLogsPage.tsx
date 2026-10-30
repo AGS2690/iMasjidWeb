@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { DataTable, ColumnDef } from '../../components/common/DataTable';
 import { AuditLogResponse } from '../../types';
 import { auditLogsApi } from '../../api/auditLogsApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 import { useModalState } from '../../hooks/useModalState';
 import { Eye, History } from 'lucide-react';
 import { AuditDetailsModal } from './AuditDetailsModal';
-import { useLocale } from '../../context/LocaleContext';
+import { useLocale } from '../../hooks/useLocale';
 
 export const AuditLogsPage: React.FC = () => {
   const { t } = useLocale();
@@ -19,31 +19,39 @@ export const AuditLogsPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize] = useState(15);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const modal = useModalState<AuditLogResponse>();
   const { error } = useToast();
 
-  const loadLogs = useCallback(async () => {
+  const handlePageChange = (page: number) => {
     setLoading(true);
-    try {
-      const res = await auditLogsApi.getAuditLogs({ pageNumber, pageSize });
-      const isOk = res.success ?? res.isSuccess;
-      if (isOk && res.data) {
-        setLogs(res.data.items || []);
-        setTotalCount(res.data.totalCount || 0);
-        setTotalPages(res.data.totalPages || 1);
-      }
-    } catch (err) {
-      error(extractErrorMessage(err), 'Failed to load audit trail');
-    } finally {
-      setLoading(false);
-    }
-  }, [pageNumber, pageSize, error]);
+    setPageNumber(page);
+  };
 
   useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
+    let active = true;
+    auditLogsApi.getAuditLogs({ pageNumber, pageSize })
+      .then((res) => {
+        if (!active) return;
+        const isOk = res.success ?? res.isSuccess;
+        if (isOk && res.data) {
+          setLogs(res.data.items || []);
+          setTotalCount(res.data.totalCount || 0);
+          setTotalPages(res.data.totalPages || 1);
+        }
+      })
+      .catch((err) => {
+        if (active) error(extractErrorMessage(err), 'Failed to load audit trail');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [pageNumber, pageSize, error]);
 
   const columns: ColumnDef<AuditLogResponse>[] = [
     {
@@ -143,7 +151,7 @@ export const AuditLogsPage: React.FC = () => {
           pageSize,
           totalCount,
           totalPages,
-          onPageChange: setPageNumber,
+          onPageChange: handlePageChange,
         }}
       />
 

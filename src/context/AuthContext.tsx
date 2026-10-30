@@ -1,29 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { UserDetailsResponse, UserNavMenuResponse } from '../types';
 import { authApi } from '../api/authApi';
 import { menusApi } from '../api/menusApi';
-
-import { useLocale } from './LocaleContext';
-
-export interface LoginResult {
-  success: boolean;
-  hasRoles: boolean;
-  message?: string;
-}
-
-interface AuthContextType {
-  user: UserDetailsResponse | null;
-  navMenus: UserNavMenuResponse[];
-  isAuthenticated: boolean;
-  hasRoles: boolean;
-  isLoading: boolean;
-  login: (tokens: { accessToken: string; refreshToken: string }) => Promise<LoginResult>;
-  logout: () => Promise<void>;
-  refreshProfile: () => Promise<UserDetailsResponse | null>;
-  refreshNavMenus: () => Promise<UserNavMenuResponse[]>;
-  hasPermission: (permissionCode: string) => boolean;
-  isActionAuthorized: (actionCode: string, route?: string) => boolean;
-}
+import { AuthContext, LoginResult } from './authContextStore';
+import { useLocale } from '../hooks/useLocale';
 
 const normalizeUserProfile = (raw: any): UserDetailsResponse => {
   if (!raw) return raw;
@@ -45,18 +25,17 @@ const normalizeUserProfile = (raw: any): UserDetailsResponse => {
   };
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserDetailsResponse | null>(null);
   const [navMenus, setNavMenus] = useState<UserNavMenuResponse[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(localStorage.getItem('access_token')));
   const { currentLocale } = useLocale();
+
+  const cultureCode = currentLocale?.cultureCode;
 
   const refreshNavMenus = useCallback(async (): Promise<UserNavMenuResponse[]> => {
     try {
-      const culture = currentLocale?.cultureCode;
-      const res = await menusApi.getUserNavMenu(culture);
+      const res = await menusApi.getUserNavMenu(cultureCode);
       const isOk = res.success ?? res.isSuccess;
       if (isOk && res.data) {
         setNavMenus(res.data);
@@ -67,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setNavMenus([]);
       return [];
     }
-  }, [currentLocale?.cultureCode]);
+  }, [cultureCode]);
 
   const refreshProfile = useCallback(async (): Promise<UserDetailsResponse | null> => {
     try {
@@ -86,45 +65,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const initAuth = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const profileRes = await authApi.getMe();
-      const isOk = profileRes.success ?? profileRes.isSuccess;
-      if (isOk && profileRes.data) {
-        const normalized = normalizeUserProfile(profileRes.data);
-        setUser(normalized);
-        if (normalized.roles && normalized.roles.length > 0) {
-          await refreshNavMenus();
-        }
-      } else {
-        localStorage.clear();
-        setUser(null);
-      }
-    } catch {
-      localStorage.clear();
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshNavMenus]);
-
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    let active = true;
+    authApi.getMe()
+      .then((profileRes) => {
+        if (!active) return;
+        const isOk = profileRes.success ?? profileRes.isSuccess;
+        if (isOk && profileRes.data) {
+          setUser(normalizeUserProfile(profileRes.data));
+        } else {
+          setUser(null);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setUser(null);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Re-fetch dynamic navigation menus whenever user switches language in UI
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      refreshNavMenus();
-    }
-  }, [currentLocale?.cultureCode, refreshNavMenus]);
+    if (!localStorage.getItem('access_token')) return;
+
+    let active = true;
+    menusApi.getUserNavMenu(cultureCode)
+      .then((res) => {
+        if (!active) return;
+        const isOk = res.success ?? res.isSuccess;
+        setNavMenus(isOk && res.data ? res.data : []);
+      })
+      .catch(() => {
+        if (active) setNavMenus([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [cultureCode]);
 
   const login = async (tokens: { accessToken: string; refreshToken: string }): Promise<LoginResult> => {
     localStorage.setItem('access_token', tokens.accessToken);
@@ -229,10 +216,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
 };

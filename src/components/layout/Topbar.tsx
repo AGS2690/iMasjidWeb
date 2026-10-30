@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { useLocale } from '../../context/LocaleContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
+import { useLocale } from '../../hooks/useLocale';
 import { Sun, Moon, LogOut, User, KeyRound, Menu, PanelLeft, PanelRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LanguageSelector } from '../common/LanguageSelector';

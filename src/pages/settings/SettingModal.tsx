@@ -5,7 +5,7 @@ import { Input } from '../../components/common/Input';
 import { Switch } from '../../components/common/Switch';
 import { SettingResponse } from '../../types';
 import { settingsApi } from '../../api/settingsApi';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { extractErrorMessage } from '../../api/client';
 
 interface SettingModalProps {

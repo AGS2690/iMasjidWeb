@@ -13,17 +13,17 @@ import {
 
 export const authApi = {
   register: async (data: RegisterRequest) => {
-    const res = await apiClient.post<ApiResponse<UserResponse>>('/api/auth/register', data);
+    const res = await apiClient.post<ApiResponse<UserResponse>>('/auth/register', data);
     return res.data;
   },
 
   login: async (credentials: { userNameOrEmail: string; password: string }) => {
-    const res = await apiClient.post<ApiResponse<TokenDto>>('/api/auth/login', credentials);
+    const res = await apiClient.post<ApiResponse<TokenDto>>('/auth/login', credentials);
     return res.data;
   },
 
   sendOtp: async (request: SendOtpRequest) => {
-    const res = await apiClient.post<ApiResponse<OtpSentResponse>>('/api/auth/send-otp', {
+    const res = await apiClient.post<ApiResponse<OtpSentResponse>>('/auth/send-otp', {
       userNameOrEmail: request.userNameOrEmail.trim(),
       purpose: request.purpose || 'Login',
     });
@@ -31,7 +31,7 @@ export const authApi = {
   },
 
   verifyOtp: async (request: VerifyOtpRequest) => {
-    const res = await apiClient.post<ApiResponse<TokenDto>>('/api/auth/verify-otp', {
+    const res = await apiClient.post<ApiResponse<TokenDto>>('/auth/verify-otp', {
       userNameOrEmail: request.userNameOrEmail.trim(),
       otp: request.otp.trim(),
       purpose: request.purpose || 'Login',
@@ -40,23 +40,22 @@ export const authApi = {
   },
 
   toggleTwoFactor: async (request: ToggleTwoFactorRequest) => {
-    const res = await apiClient.post<ApiResponse>('/api/auth/toggle-2fa', request);
+    const res = await apiClient.post<ApiResponse>('/auth/toggle-2fa', request);
     return res.data;
   },
 
   getMe: async () => {
-    const res = await apiClient.get<ApiResponse<UserDetailsResponse>>('/api/auth/me');
+    const res = await apiClient.get<ApiResponse<UserDetailsResponse>>('/auth/me');
     return res.data;
   },
 
   logout: async () => {
-    const res = await apiClient.post<ApiResponse>('/api/auth/logout');
+    const res = await apiClient.post<ApiResponse>('/auth/logout');
     return res.data;
   },
 
   changePassword: async (passwords: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
-    const res = await apiClient.post<ApiResponse>('/api/auth/change-password', passwords);
+    const res = await apiClient.post<ApiResponse>('/auth/change-password', passwords);
     return res.data;
   },
 };
-

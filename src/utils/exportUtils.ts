@@ -4,10 +4,23 @@ export interface ExportColumn<T> {
   getValue?: (item: T) => any;
 }
 
+const escapeCsvCell = (value: string): string => {
+  let firstNonWhitespace = value.length - value.trimStart().length;
+  while (
+    firstNonWhitespace < value.length &&
+    (value.charCodeAt(firstNonWhitespace) <= 0x20 || value.charCodeAt(firstNonWhitespace) === 0xfeff)
+  ) {
+    firstNonWhitespace++;
+  }
+  const firstCharacter = value[firstNonWhitespace];
+  const safeValue = firstCharacter && '=+-@'.includes(firstCharacter) ? `'${value}` : value;
+  return `"${safeValue.replace(/"/g, '""')}"`;
+};
+
 export function exportToCsv<T>(data: T[], columns: ExportColumn<T>[], filename = 'export.csv') {
   if (!data || data.length === 0) return;
 
-  const headers = columns.map((col) => `"${col.header.replace(/"/g, '""')}"`).join(',');
+  const headers = columns.map((col) => escapeCsvCell(col.header)).join(',');
 
   const rows = data.map((item) =>
     columns
@@ -29,7 +42,7 @@ export function exportToCsv<T>(data: T[], columns: ExportColumn<T>[], filename =
           val = JSON.stringify(val);
         }
 
-        return `"${String(val).replace(/"/g, '""')}"`;
+        return escapeCsvCell(String(val));
       })
       .join(',')
   );

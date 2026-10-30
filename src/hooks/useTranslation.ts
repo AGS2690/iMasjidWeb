@@ -1,4 +1,4 @@
-import { useLocale, useTranslation } from '../context/LocaleContext';
+import { useLocale, useTranslation } from './useLocale';
 
 export { useTranslation, useLocale };
 export default useTranslation;

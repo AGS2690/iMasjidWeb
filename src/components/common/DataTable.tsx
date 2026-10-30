@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Pagination } from './Pagination';
 import { Input } from './Input';
 import { Button } from './Button';
 import { Search, Download, Inbox } from 'lucide-react';
 import { exportToCsv, exportToJson, ExportColumn } from '../../utils/exportUtils';
-import { useDebounce } from '../../hooks/useDebounce';
-import { useLocale } from '../../context/LocaleContext';
+import { useLocale } from '../../hooks/useLocale';
 
 export interface ColumnDef<T> {
   key: string;
@@ -56,21 +55,6 @@ export function DataTable<T extends Record<string, any>>({
   emptyTitle,
 }: DataTableProps<T>) {
   const { t } = useLocale();
-  const [inputValue, setInputValue] = useState(searchTerm);
-  const debouncedSearch = useDebounce(inputValue, 350);
-
-  // Sync internal state when external searchTerm resets
-  useEffect(() => {
-    setInputValue(searchTerm);
-  }, [searchTerm]);
-
-  // Notify parent on debounced value change
-  useEffect(() => {
-    if (onSearchChange && debouncedSearch !== searchTerm) {
-      onSearchChange(debouncedSearch);
-    }
-  }, [debouncedSearch, onSearchChange, searchTerm]);
-
   const getKey = (item: T, index: number): string => {
     if (typeof keyField === 'function') return keyField(item);
     return item[keyField] ? String(item[keyField]) : String(index);
@@ -113,8 +97,8 @@ export function DataTable<T extends Record<string, any>>({
             {onSearchChange !== undefined && (
               <Input
                 placeholder={searchPlaceholder || t('Common.searchPlaceholder', 'Search records...')}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
                 leftIcon={<Search size={16} />}
                 style={{ marginBottom: 0 }}
               />
