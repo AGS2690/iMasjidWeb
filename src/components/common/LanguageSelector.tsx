@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocale } from '../../hooks/useLocale';
 import { SupportedLocale } from '../../types';
+import { Globe, Loader2 } from 'lucide-react';
 
 interface LanguageSelectorProps {
   className?: string;
 }
 
 export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ className = '' }) => {
-  const { locales, currentLocale, setLocale } = useLocale();
+  const { locales, currentLocale, setLocale, isLoading, refreshLocales } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isRtl = currentLocale?.direction?.toUpperCase() === 'RTL' || document.documentElement.dir === 'rtl';
@@ -41,10 +42,12 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ className = 
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const img = e.currentTarget;
+    if (img.dataset.fallbackApplied) return;
+    img.dataset.fallbackApplied = 'true';
     if (img.src.endsWith('.png')) {
       img.src = img.src.replace(/\.png$/, '.svg');
-    } else {
-      img.src = '/assets/flags/BI.png';
+    } else if (img.src.endsWith('.svg')) {
+      img.src = img.src.replace(/\.svg$/, '.png');
     }
   };
 
@@ -53,8 +56,15 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ className = 
     setIsOpen(false);
   };
 
-  // Only show active supported languages
-  const activeLocales = locales.filter((l) => l.isActive);
+  const handleToggle = () => {
+    if (!isOpen && locales.length === 0) {
+      refreshLocales().catch(() => {});
+    }
+    setIsOpen((prev) => !prev);
+  };
+
+  // Only show active supported languages dynamically from DB
+  const activeLocales = locales.filter((l) => l.isActive ?? true);
 
   return (
     <div
@@ -62,10 +72,10 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ className = 
       className={`imasjid-lang-selector ${className}`}
       style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
     >
-      {/* Active Flag Trigger Button (Matches screenshot exactly: clean flag with rounded corners) */}
+      {/* Active Flag Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={handleToggle}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         title={currentLocale?.languageName || 'Select Language'}
@@ -90,111 +100,184 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ className = 
           e.currentTarget.style.opacity = '1';
         }}
       >
-        <img
-          src={getFlagSrc(currentLocale?.flagIconUrl || 'assets/flags/BI.png')}
-          alt={currentLocale?.languageName || 'Language'}
-          style={{
-            width: '28px',
-            height: '20px',
-            objectFit: 'cover',
-            borderRadius: '4px',
-            border: '1px solid rgba(0, 0, 0, 0.14)',
-            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.12)',
-            display: 'block',
-          }}
-          onError={handleImageError}
-        />
+        {currentLocale?.flagIconUrl ? (
+          <img
+            src={getFlagSrc(currentLocale.flagIconUrl)}
+            alt={currentLocale?.languageName || 'Language'}
+            style={{
+              width: '28px',
+              height: '20px',
+              objectFit: 'cover',
+              borderRadius: '4px',
+              border: '1px solid rgba(0, 0, 0, 0.14)',
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.12)',
+              display: 'block',
+            }}
+            onError={handleImageError}
+          />
+        ) : (
+          <div
+            style={{
+              width: '28px',
+              height: '20px',
+              borderRadius: '4px',
+              border: '1px solid var(--border-color, rgba(0, 0, 0, 0.14))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'var(--bg-input, rgba(0, 0, 0, 0.05))',
+              color: 'var(--text-secondary, #64748b)',
+            }}
+          >
+            <Globe size={14} />
+          </div>
+        )}
       </button>
 
-      {/* Clean Minimal Dropdown Menu (Matches screenshot) */}
+      {/* Clean Themed Dropdown Menu */}
       {isOpen && (
         <div
           role="listbox"
+          className="glass-panel"
           style={{
             position: 'absolute',
             top: 'calc(100% + 8px)',
             right: isRtl ? 'auto' : 0,
             left: isRtl ? 0 : 'auto',
-            width: '185px',
-            backgroundColor: '#ffffff',
+            minWidth: '185px',
+            backgroundColor: 'var(--bg-surface, #ffffff)',
             borderRadius: '10px',
             padding: '6px',
-            border: '1px solid rgba(0, 0, 0, 0.08)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04)',
+            border: '1px solid var(--border-color, rgba(0, 0, 0, 0.08))',
+            boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15))',
             zIndex: 1000,
             display: 'flex',
             flexDirection: 'column',
-            gap: '2px',
+            gap: '3px',
             boxSizing: 'border-box',
             animation: 'fadeInScale 0.12s ease-out',
             direction: isRtl ? 'rtl' : 'ltr',
           }}
         >
-          {activeLocales.map((locale) => {
-            const isSelected = currentLocale?.id === locale.id;
+          {isLoading && activeLocales.length === 0 ? (
+            <div
+              style={{
+                padding: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                color: 'var(--text-muted, #64748b)',
+                fontSize: '0.85rem',
+              }}
+            >
+              <Loader2 size={16} className="animate-spin" />
+              <span>Loading...</span>
+            </div>
+          ) : activeLocales.length === 0 ? (
+            <div
+              style={{
+                padding: '10px 12px',
+                textAlign: 'center',
+                color: 'var(--text-muted, #64748b)',
+                fontSize: '0.85rem',
+              }}
+            >
+              No languages available
+            </div>
+          ) : (
+            activeLocales.map((locale) => {
+              const isSelected =
+                currentLocale?.id === locale.id ||
+                Boolean(
+                  currentLocale?.cultureCode &&
+                    locale.cultureCode &&
+                    currentLocale.cultureCode.toLowerCase() === locale.cultureCode.toLowerCase()
+                );
 
-            return (
-              <button
-                key={locale.id}
-                type="button"
-                onClick={() => handleSelect(locale)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '8px 10px',
-                  width: '100%',
-                  border: 'none',
-                  borderRadius: '6px',
-                  backgroundColor: isSelected ? 'rgba(0, 110, 140, 0.08)' : 'transparent',
-                  cursor: 'pointer',
-                  textAlign: isRtl ? 'right' : 'left',
-                  transition: 'background-color 0.12s ease',
-                  boxSizing: 'border-box',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = isSelected
-                    ? 'rgba(0, 110, 140, 0.12)'
-                    : '#f1f5f9';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = isSelected
-                    ? 'rgba(0, 110, 140, 0.08)'
-                    : 'transparent';
-                }}
-              >
-                {/* Flag */}
-                <img
-                  src={getFlagSrc(locale.flagIconUrl)}
-                  alt={locale.countryName}
+              return (
+                <button
+                  key={locale.id || locale.cultureCode}
+                  type="button"
+                  onClick={() => handleSelect(locale)}
                   style={{
-                    width: '26px',
-                    height: '18px',
-                    objectFit: 'cover',
-                    borderRadius: '3px',
-                    border: '1px solid rgba(0, 0, 0, 0.14)',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.08)',
-                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '8px 10px',
+                    width: '100%',
+                    border: 'none',
+                    borderRadius: '6px',
+                    backgroundColor: isSelected ? 'rgba(0, 110, 140, 0.14)' : 'transparent',
+                    cursor: 'pointer',
+                    textAlign: isRtl ? 'right' : 'left',
+                    transition: 'background-color 0.12s ease',
+                    boxSizing: 'border-box',
                   }}
-                  onError={handleImageError}
-                />
-
-                {/* Language Name */}
-                <span
-                  style={{
-                    fontSize: '0.9375rem',
-                    fontWeight: isSelected ? 600 : 500,
-                    color: '#1e293b',
-                    fontFamily:
-                      "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                    lineHeight: 1.2,
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = isSelected
+                      ? 'rgba(0, 110, 140, 0.2)'
+                      : 'rgba(0, 110, 140, 0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isSelected
+                      ? 'rgba(0, 110, 140, 0.14)'
+                      : 'transparent';
                   }}
                 >
-                  {locale.languageName}
-                </span>
-              </button>
-            );
-          })}
+                  {/* Flag */}
+                  {locale.flagIconUrl ? (
+                    <img
+                      src={getFlagSrc(locale.flagIconUrl)}
+                      alt={locale.countryName || locale.languageName}
+                      style={{
+                        width: '26px',
+                        height: '18px',
+                        objectFit: 'cover',
+                        borderRadius: '3px',
+                        border: '1px solid rgba(0, 0, 0, 0.14)',
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.08)',
+                        flexShrink: 0,
+                      }}
+                      onError={handleImageError}
+                    />
+                  ) : (
+                    <Globe size={18} style={{ color: 'var(--text-muted, #64748b)', flexShrink: 0 }} />
+                  )}
+
+                  {/* Language Name */}
+                  <span
+                    style={{
+                      fontSize: '0.9375rem',
+                      fontWeight: isSelected ? 600 : 500,
+                      color: 'var(--text-primary, #1e293b)',
+                      fontFamily:
+                        "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                      lineHeight: 1.2,
+                      flex: 1,
+                    }}
+                  >
+                    {locale.languageName}
+                  </span>
+
+                  {/* Selection Indicator Dot */}
+                  {isSelected && (
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        backgroundColor: '#006e8c',
+                        flexShrink: 0,
+                        marginLeft: isRtl ? 0 : '4px',
+                        marginRight: isRtl ? '4px' : 0,
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })
+          )}
         </div>
       )}
     </div>

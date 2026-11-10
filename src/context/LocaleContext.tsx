@@ -18,7 +18,10 @@ export const LocaleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.cultureCode || parsed.id)) {
+          return parsed;
+        }
       }
     } catch {
       // Ignore parse error
@@ -43,14 +46,16 @@ export const LocaleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         ? (res as unknown as SupportedLocale[])
         : [];
 
-      setLocales(list);
-
       if (list.length > 0) {
+        setLocales(list);
+
         setCurrentLocale((prev) => {
           // Reconcile saved locale with latest backend database records
           if (prev) {
             const matched = list.find(
-              (l) => l.cultureCode?.toLowerCase() === prev.cultureCode?.toLowerCase() || l.id === prev.id
+              (l) =>
+                (prev.id && l.id === prev.id) ||
+                (prev.cultureCode && l.cultureCode?.toLowerCase() === prev.cultureCode.toLowerCase())
             );
             if (matched) {
               try {
@@ -74,12 +79,13 @@ export const LocaleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             } catch {
               // Ignore storage errors
             }
+            return defaultLocale;
           }
-          return defaultLocale;
+          return prev;
         });
       }
     } catch (err) {
-      console.warn('Could not fetch supported locales from service API:', err);
+      console.warn('Could not fetch supported locales from database service:', err);
     } finally {
       setIsLoading(false);
     }
@@ -90,13 +96,24 @@ export const LocaleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     let timer: ReturnType<typeof setTimeout>;
     const init = async () => {
       await fetchLocales();
-      if (retries < 2) {
+      if (retries < 3) {
         retries++;
-        timer = setTimeout(init, 2500);
+        timer = setTimeout(init, 3000);
       }
     };
     init();
-    return () => clearTimeout(timer);
+
+    const onRefetch = () => {
+      fetchLocales();
+    };
+    window.addEventListener('focus', onRefetch);
+    window.addEventListener('imasjid_auth_login', onRefetch);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', onRefetch);
+      window.removeEventListener('imasjid_auth_login', onRefetch);
+    };
   }, [fetchLocales]);
 
   const setLocale = (locale: SupportedLocale) => {

@@ -116,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (tokens: { accessToken: string; refreshToken: string }): Promise<LoginResult> => {
     localStorage.setItem('access_token', tokens.accessToken);
     localStorage.setItem('refresh_token', tokens.refreshToken);
+    window.dispatchEvent(new CustomEvent('imasjid_auth_login'));
     setIsLoading(true);
     try {
       const profileRes = await authApi.getMe();
